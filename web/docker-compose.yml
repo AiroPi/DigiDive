@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  cv:
+    build:
+      context: .
+      target: prod
+    ports:
+      - 80:5000
+    restart: unless-stopped

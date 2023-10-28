@@ -1,0 +1,3 @@
+bandit
+black
+isort

@@ -15,6 +15,38 @@ LOWERCASE_OFFSET = 61
 DIGIT_OFFSET = 48
 
 
+
+def mask(bytes: int) -> int:
+    """Make a mask with a given number of bytes.
+    
+    Example:
+        mask(1) = 0b11111111
+        mask(2) = 0b1111111111111111
+        mask(3) = 0b111111111111111111111111
+
+    Args:
+        bytes: the number of bytes to mask.
+
+    Returns:
+        the mask
+    """
+    return (1 << (bytes * 8)) - 1
+
+def get_bytes(number: int, bytes: int) -> tuple[int, int]:
+    """Return the n first bytes and the rest of the number.
+    
+    Example:
+        get_bytes(0b100101100110, 1) = (0b10010110, 0b110) 
+
+    Args:
+        bytes: the number of bytes to get.
+
+    Returns:
+        a tuple with the rest of the number and the n first bytes.
+    """
+    return (number >> (bytes * 8), number & mask(bytes))
+    
+
 def base62_char_to_int(char: str) -> int:
     """Reverse of int_to_base62_char
 
@@ -136,37 +168,59 @@ def bin_to_text(bin_: int) -> str:
 
 
 def QR_encode(name: str, incr: int) -> str:
+    version = 1  # 1 byte value
     timestamp = int(datetime.datetime.now().timestamp())
 
-    random_nb = random.randint(1, 0xFFFF)
     sec = text_to_bin(SECRET_KEY)
+    random_nb = random.randint(1, 0xFFFF)
 
-    nb = ((text_to_bin(name) << 32) + timestamp << 8) + incr  # sort of twitter snowflakes
-    nb *= sec % random_nb
-    nb = (nb << 16) + random_nb
-    code = int_to_base62(nb)
+    value = timestamp  # 4 bytes
+    value = (value << 8) + incr  # 1 byte
+
+    value *= sec % random_nb
+    value = (value << 16) + random_nb  # 2 bytes
+    
+    value = (value << 8) + version  # 1 byte
+
+    code = int_to_base62(value)
 
     return code
 
+def QR_extract_infos(code: str) -> tuple[int, int, int]:
+    value = base62_to_int(code)
 
-def QR_extract_infos(code: str) -> tuple[str, int, int]:
-    nb = base62_to_int(code)
+    secret = text_to_bin(SECRET_KEY)
+    value, version = get_bytes(value, 1)  # first byte
 
-    public_key = nb & 0xFFFF
-    nb = (nb >> 16) // (text_to_bin(SECRET_KEY) % public_key)
+    if version == 1:
+        value, public_key = get_bytes(value, 2)
 
-    name = bin_to_text(nb >> (32 + 8))
-    timestamp = (nb >> 8) & 0xFFFFFFFF
-    incr = nb & 0xFF
+        value = value // (secret % public_key)
 
-    return (name, timestamp, incr)
+        value, incr = get_bytes(value, 1)
+        timestamp = value
 
+        return (version, timestamp, incr)
+
+
+def matrix_qr(qr_codes: list[str]) -> list[list[str]]:
+    """Take a list of QR codes and return a matrix of QR codes.
+
+    Args:
+        qr_codes (list[str]): The list of QR codes.
+
+    Returns:
+        list[list[str]]: The matrix of QR codes.
+    """
+    
 
 if __name__ == "__main__":
-    for i in range(0):
+    for i in range(24):
         code = QR_encode("Name", i)
+        print(code)
+        print(QR_extract_infos(code))
 
         qr = qrcode.QRCode(error_correction=qrcode.ERROR_CORRECT_L)
-        qr.add_data(f"https://foo.bar/dive/{code}")
+        qr.add_data(f"https://digidive.schauli.com/dive/{code}")
         img = qr.make_image()
-        img.save(f"./data/results/{code}.png")
+        img.save(f"./data/results/image{i + 1}.png")

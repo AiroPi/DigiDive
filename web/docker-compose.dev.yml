@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  cv:
+    build:
+      target: dev
+    volumes:
+      - ./src:/app

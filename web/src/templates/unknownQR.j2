@@ -1,0 +1,41 @@
+{% extends "base.j2" %}
+
+{% block title %}
+QR code inconnu
+{% endblock title %}
+
+{% block content %}
+<div class="background">
+    <div class="waves">
+        <img src="{{ url_for('static', path='images/waves.svg') }}" alt="waves"> </object>
+    </div>
+    <div class="water">
+    </div>
+    <div class="floor">
+        <img src="{{ url_for('static', path='images/floor.svg') }}" alt="floor"> </object>
+    </div>
+    <div class="fish3">
+        <img src="{{ url_for('static', path='images/fish3.svg') }}" alt="fish"> </object>
+    </div>
+    <div class="fish2">
+        <img src="{{ url_for('static', path='images/fish2.svg') }}" alt="fish"> </object>
+    </div>
+    <div class="fish1">
+        <img src="{{ url_for('static', path='images/fish1.svg') }}" alt="fish"> </object>
+    </div>
+</div>
+<div class="text">
+    <span class="title">
+        <h1>Bonjour {{ name }}</h1>
+    </span>
+    <span class="description">
+        Ce QR code n'a aucune association ! Définissez-le dès maintenant !
+    </span>
+</div>
+
+<form method="post" name="dive number">
+    <input type="text" name="dive_nb" placeholder="Plongée numéro...">
+</form>
+
+
+{% endblock content %}

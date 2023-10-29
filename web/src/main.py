@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from typing import Annotated
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 
 import httpx
 from fastapi import FastAPI, Form, Request
@@ -28,13 +28,14 @@ OAUTH_CLIENT_ID = os.environ["OAUTH_CLIENT_ID"]
 OAUTH_CLIENT_SECRET = os.environ["OAUTH_CLIENT_SECRET"]
 NOTION_AUTH_URL = "https://api.notion.com/v1/oauth/authorize"
 NOTION_OAUTH_TOKEN = "https://api.notion.com/v1/oauth/token"
+BASE_URL = os.environ["BASE_URL"]
 
 
 app = FastAPI(
     middleware=[Middleware(SessionMiddleware, secret_key=os.environ["SECRET"])]
 )
-app.mount("/static", StaticFiles(directory="src/static"), name="static")
-templates = Jinja2Templates(directory="src/templates")
+app.mount("/static", StaticFiles(directory="./static"), name="static")
+templates = Jinja2Templates(directory="./templates")
 
 database = create_async_engine("sqlite+aiosqlite:///data/save.db")
 async_session = async_sessionmaker(database, expire_on_commit=False)
@@ -146,7 +147,7 @@ async def login(request: Request, code: str | None = None):
         "login.html.j2",
         {
             "request": request,
-            "redirect_uri": format_auth_url("http://localhost:8000/callback", code),
+            "redirect_uri": format_auth_url(urljoin(BASE_URL, "/callback"), code),
         },
     )
 
@@ -170,7 +171,7 @@ async def callback(
                 data={
                     "grant_type": "authorization_code",
                     "code": code,
-                    "redirect_uri": "http://localhost:8000/callback",
+                    "redirect_uri": urljoin(BASE_URL, "/callback"),
                 },
                 auth=(OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET),
             )

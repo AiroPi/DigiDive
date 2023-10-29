@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   cv:
@@ -6,3 +6,5 @@ services:
       target: dev
     volumes:
       - ./src:/app
+    ports:
+      - 8000:8000

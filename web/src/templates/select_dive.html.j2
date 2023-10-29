@@ -1,0 +1,12 @@
+{% extends "base.j2" %}
+
+{% block content %}
+<form method="post">
+    <select id="dive_url" name="dive_url">
+        {% for dive in dives %}
+        <option value="{{ dive.link }}">{{ dive.number }}</option>
+        {% endfor %}
+    </select>
+    <input type="submit" value="Submit">
+</form>
+{% endblock content %}

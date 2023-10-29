@@ -1,0 +1,12 @@
+{% extends "base.j2" %}
+
+{% block content %}
+<form method="post">
+    <select id="database" name="database">
+        {% for page in pages %}
+        <option value="{{ page.id }}">{{ page.title[0].plain_text }}</option>
+        {% endfor %}
+    </select>
+    <input type="submit" value="Submit">
+</form>
+{% endblock content %}

@@ -165,10 +165,10 @@ async def index(request: Request) -> list[AnyComponent]:
         expr = (
             select(Bind.link)
             .filter_by(user_id=request.session["owner"]["user"]["id"])
-            .filter(Bind.link.in_(dive.link for dive in dives))
+            .filter(Bind.link.in_(get_fixed_url(dive.link) for dive in dives))
         )
         result = await session.execute(expr)
-        existing = {get_fixed_url(link) for (link,) in result}
+        existing = {link for (link,) in result}
     for dive in dives:
         dive.linked = get_fixed_url(dive.link) in existing
 

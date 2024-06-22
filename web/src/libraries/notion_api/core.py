@@ -54,7 +54,9 @@ class NotionClient:
             raise RuntimeError("Please use this class as a context manager.")
         return await self.client.request(method, uri, **kwargs)
 
-    async def _get(self, uri: str, params: dict[str, Any]):
+    async def _get(self, uri: str, params: dict[str, Any] = MISSING):
+        if params is MISSING:
+            return await self._request("GET", uri)
         return await self._request("GET", uri, params=params)
 
     async def _post(self, uri: str, json: dict[str, Any]):
@@ -68,7 +70,7 @@ class NotionClient:
         start_cursor: str = MISSING,
         page_size: int = MISSING,
     ):
-        json: dict[str, Any] = dict(query=query)
+        json: dict[str, Any] = {"query": query}
         if sort is not MISSING:
             json["sort"] = sort
         if filter is not MISSING:
@@ -83,9 +85,7 @@ class NotionClient:
             json=json,
         )
 
-    async def query_database(
-        self, database_id: str, sorts: list[DatabaseQuerySort] = MISSING
-    ):
+    async def query_database(self, database_id: str, sorts: list[DatabaseQuerySort] = MISSING):
         json: dict[str, Any] = {}
         if sorts is not MISSING:
             json["sorts"] = sorts
@@ -94,3 +94,6 @@ class NotionClient:
             self.BASE + f"/databases/{database_id}/query",
             json=json,
         )
+
+    async def retrieve_database(self, database_id: str):
+        return await self._get(self.BASE + f"/databases/{database_id}")

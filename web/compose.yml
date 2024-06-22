@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  digidive:
+    image: airopi/mybot:stable
+    build:
+      dockerfile: ./Dockerfile
+      target: prod
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app
+        - action: rebuild
+          path: ./requirements.txt
+    ports:
+      - 80:8000
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    tty: true
+    restart: unless-stopped

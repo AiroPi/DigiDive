@@ -1,24 +1,26 @@
 from __future__ import annotations
 
 import datetime
-import math
+import os
 import random
 
 import qrcode
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE = 62
 
-SECRET_KEY = "This is very secret."  # TODO: use .env or anything else
+SECRET_KEY = os.environ["SECRET_KEY"]
 
 UPPERCASE_OFFSET = 55
 LOWERCASE_OFFSET = 61
 DIGIT_OFFSET = 48
 
 
-
 def mask(bytes: int) -> int:
     """Make a mask with a given number of bytes.
-    
+
     Example:
         mask(1) = 0b11111111
         mask(2) = 0b1111111111111111
@@ -32,11 +34,12 @@ def mask(bytes: int) -> int:
     """
     return (1 << (bytes * 8)) - 1
 
+
 def get_bytes(number: int, bytes: int) -> tuple[int, int]:
     """Return the n first bytes and the rest of the number.
-    
+
     Example:
-        get_bytes(0b100101100110, 1) = (0b10010110, 0b110) 
+        get_bytes(0b100101100110, 1) = (0b10010110, 0b110)
 
     Args:
         bytes: the number of bytes to get.
@@ -45,7 +48,7 @@ def get_bytes(number: int, bytes: int) -> tuple[int, int]:
         a tuple with the rest of the number and the n first bytes.
     """
     return (number >> (bytes * 8), number & mask(bytes))
-    
+
 
 def base62_char_to_int(char: str) -> int:
     """Reverse of int_to_base62_char
@@ -67,7 +70,7 @@ def base62_char_to_int(char: str) -> int:
     elif "a" <= char <= "z":
         return ord(char) - LOWERCASE_OFFSET
     else:
-        raise ValueError("%s is not a valid character" % char)
+        raise ValueError(f"{char} is not a valid character")
 
 
 def int_to_base62_char(integer: int) -> str:
@@ -167,26 +170,27 @@ def bin_to_text(bin_: int) -> str:
     return result
 
 
-def QR_encode(name: str, incr: int) -> str:
+def qr_encode(name: str, incr: int) -> str:
     version = 1  # 1 byte value
     timestamp = int(datetime.datetime.now().timestamp())
 
     sec = text_to_bin(SECRET_KEY)
-    random_nb = random.randint(1, 0xFFFF)
+    random_nb = random.randint(1, 0xFFFF)  # noqa: S311
 
     value = timestamp  # 4 bytes
     value = (value << 8) + incr  # 1 byte
 
     value *= sec % random_nb
     value = (value << 16) + random_nb  # 2 bytes
-    
+
     value = (value << 8) + version  # 1 byte
 
     code = int_to_base62(value)
 
     return code
 
-def QR_extract_infos(code: str) -> tuple[int, int, int]:
+
+def qr_extract_infos(code: str) -> tuple[int, int, int]:
     value = base62_to_int(code)
 
     secret = text_to_bin(SECRET_KEY)
@@ -201,26 +205,28 @@ def QR_extract_infos(code: str) -> tuple[int, int, int]:
         timestamp = value
 
         return (version, timestamp, incr)
+    else:
+        raise ValueError("Version %d is not supported." % version)
 
 
-def matrix_qr(qr_codes: list[str]) -> list[list[str]]:
-    """Take a list of QR codes and return a matrix of QR codes.
+# def matrix_qr(qr_codes: list[str]) -> list[list[str]]:
+#     """Take a list of QR codes and return a matrix of QR codes.
 
-    Args:
-        qr_codes (list[str]): The list of QR codes.
+#     Args:
+#         qr_codes (list[str]): The list of QR codes.
 
-    Returns:
-        list[list[str]]: The matrix of QR codes.
-    """
-    
+#     Returns:
+#         list[list[str]]: The matrix of QR codes.
+#     """
+
 
 if __name__ == "__main__":
-    for i in range(24):
-        code = QR_encode("Name", i)
+    for i in range(54):
+        code = qr_encode("Name", i)
         print(code)
-        print(QR_extract_infos(code))
+        print(qr_extract_infos(code))
 
-        qr = qrcode.QRCode(error_correction=qrcode.ERROR_CORRECT_L)
+        qr = qrcode.QRCode(error_correction=qrcode.ERROR_CORRECT_L, border=0)
         qr.add_data(f"https://digidive.schauli.com/dive/{code}")
         img = qr.make_image()
         img.save(f"./data/results/image{i + 1}.png")

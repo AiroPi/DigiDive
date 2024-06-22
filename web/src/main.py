@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Annotated, Any, Literal
 from urllib.parse import urlencode, urljoin
 
@@ -86,6 +87,17 @@ def get_number(request: Request, dive: dict[str, Any]) -> str | int:
     return dive["properties"]["_number"]["formula"]["string"]
 
 
+def get_fixed_url(url: str) -> str:
+    """
+    The Notion API returns publics url as "https://user.notion.site/name-of-the-page-{id}". But only the id is needed.
+    If the name of the page change, the returned url will also change, which is not ideal for us to detect linked pages.
+    This function will return the fixed url, which is the url without the name of the page.
+
+    For example: "https://airopi.notion.site/Plong-e-pr-pa-GP-4-abd78zZoiu7878oiuy7878" -> "https://airopi.notion.site/abd78zZoiu7878oiuy7878
+    """
+    return re.sub(r"(https://\S+\.notion\.site/)\S+-(\S+)", r"\1\2", url)
+
+
 def page(*components: AnyComponent, title: str | None = None) -> list[AnyComponent]:
     return [
         c.PageTitle(text="DigiDive"),
@@ -156,9 +168,9 @@ async def index(request: Request) -> list[AnyComponent]:
             .filter(Bind.link.in_(dive.link for dive in dives))
         )
         result = await session.execute(expr)
-        existing = {link for (link,) in result}
+        existing = {get_fixed_url(link) for (link,) in result}
     for dive in dives:
-        dive.linked = dive.link in existing
+        dive.linked = get_fixed_url(dive.link) in existing
 
     return page(
         c.Table(
@@ -186,6 +198,7 @@ async def dive_redirect(request: Request, code: str) -> list[AnyComponent]:
                 text="Login with Notion", on_click=GoToEvent(url=format_auth_url(urljoin(BASE_URL, "/callback"), code))
             )
         )
+    # TODO: save state during config?
     if request.session.get("database") is None:
         return [c.FireEvent(event=GoToEvent(url="/config/table"))]
     if request.session.get("column") is None:
@@ -199,7 +212,7 @@ async def dive_redirect(request: Request, code: str) -> list[AnyComponent]:
         )
         dives = [
             Dive(
-                link=dive["public_url"],
+                link=get_fixed_url(dive["public_url"]),
                 name=title[0]["plain_text"] if (title := dive["properties"]["Name"]["title"]) else "Untitled",
                 number=str(get_number(request, dive)),
             )
@@ -233,7 +246,6 @@ async def dive_redirect(request: Request, code: str) -> list[AnyComponent]:
 
 @app.post("/api/dive/{code}", response_model=FastUI, response_model_exclude_none=True)
 async def dive_post(request: Request, dive_url: Annotated[str, Form()], code: str):
-    print(code, dive_url)
     async with async_session() as session:
         result = Bind(link=dive_url, user_id=request.session["owner"]["user"]["id"], code=code)
         session.add(result)

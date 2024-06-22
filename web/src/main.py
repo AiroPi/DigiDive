@@ -95,7 +95,7 @@ def get_fixed_url(url: str) -> str:
 
     For example: "https://airopi.notion.site/Plong-e-pr-pa-GP-4-abd78zZoiu7878oiuy7878" -> "https://airopi.notion.site/abd78zZoiu7878oiuy7878
     """
-    return re.sub(r"(https://\S+\.notion\.site/)\S+-(\S+)", r"\1\2", url)
+    return re.sub(r"^(https://\S+\.notion\.site/)\S*?([^-]+)$", r"\1\2", url)
 
 
 def page(*components: AnyComponent, title: str | None = None) -> list[AnyComponent]:

@@ -298,7 +298,7 @@ async def form_content(request: Request, kind: ConfigKind) -> list[AnyComponent]
                 ]
         case "column":
             if request.session.get("database") is None:
-                return page(c.Markdown(text="Please select a table first."))
+                return [c.Markdown(text="Please select a table first.")]
 
             notion_client = NotionClient(request.session["access_token"])
             async with notion_client:
@@ -367,10 +367,10 @@ async def login(request: Request, code: str | None = None):
     )
 
 
-@app.get("/logout", response_class=RedirectResponse)
-async def logout(request: Request):
+@app.get("/api/logout", response_model=FastUI, response_model_exclude_none=True)
+async def logout(request: Request) -> list[AnyComponent]:
     request.session.clear()
-    return RedirectResponse(url="/")
+    return [c.FireEvent(event=GoToEvent(url="/"))]
 
 
 @app.get("/callback", response_class=RedirectResponse)

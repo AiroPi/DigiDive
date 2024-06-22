@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   digidive:
-    image: airopi/mybot:stable
+    image: airopi/digidive:latest
     build:
       dockerfile: ./Dockerfile
       target: prod

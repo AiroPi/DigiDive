@@ -5,7 +5,7 @@ from typing import Annotated, Any, Literal
 from urllib.parse import urlencode, urljoin
 
 import httpx
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.middleware import Middleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -98,6 +98,10 @@ def page(*components: AnyComponent, title: str | None = None) -> list[AnyCompone
                     on_click=GoToEvent(url="/config"),
                     active="startswith:/config",
                 ),
+                c.Link(
+                    components=[c.Text(text="Logout")],
+                    on_click=GoToEvent(url="/logout"),
+                ),
             ],
         ),
         c.Page(
@@ -123,6 +127,11 @@ async def index(request: Request) -> list[AnyComponent]:
         return page(
             c.Button(text="Login with Notion", on_click=GoToEvent(url=format_auth_url(urljoin(BASE_URL, "/callback"))))
         )
+
+    if request.session.get("database") is None:
+        return [c.FireEvent(event=GoToEvent(url="/config/table"))]
+    if request.session.get("column") is None:
+        return [c.FireEvent(event=GoToEvent(url="/config/column"))]
 
     notion_client = NotionClient(request.session["access_token"])
 
@@ -168,57 +177,58 @@ async def index(request: Request) -> list[AnyComponent]:
 async def dive_redirect(request: Request, code: str) -> list[AnyComponent]:
     async with async_session() as session:
         result = await session.scalar(select(Bind).filter_by(code=code))
-        print(result)
     if result is not None:
         return [c.FireEvent(event=GoToEvent(url=result.link))]
+
     if request.session.get("access_token") is None:
         return page(
             c.Button(
                 text="Login with Notion", on_click=GoToEvent(url=format_auth_url(urljoin(BASE_URL, "/callback"), code))
             )
         )
-    elif request.session.get("database") is None:
-        return [c.FireEvent(event=GoToEvent(url="/config"))]
-        # return RedirectResponse(url="/config")
-    else:
-        notion_client = NotionClient(request.session["access_token"])
-        async with notion_client:
-            dives_raw = await notion_client.query_database(
-                request.session["database"],
-                sorts=[{"timestamp": "last_edited_time", "direction": "descending"}],
-            )
-            dives = [
-                Dive(
-                    link=dive["public_url"],
-                    name=title[0]["plain_text"] if (title := dive["properties"]["Name"]["title"]) else "Untitled",
-                    number=str(get_number(request, dive)),
-                )
-                for dive in dives_raw.json()["results"]
-            ]
-            async with async_session() as session:
-                expr = (
-                    select(Bind.link)
-                    .filter_by(user_id=request.session["owner"]["user"]["id"])
-                    .filter(Bind.link.in_(dive.link for dive in dives))
-                )
-                result = await session.execute(expr)
-                existing = {link for (link,) in result}
-            for dive in dives:
-                dive.linked = dive.link in existing
+    if request.session.get("database") is None:
+        return [c.FireEvent(event=GoToEvent(url="/config/table"))]
+    if request.session.get("column") is None:
+        return [c.FireEvent(event=GoToEvent(url="/config/column"))]
 
-            options = [
-                SelectOption(value=dive.link, label=f"{dive.number} - {dive.name}") for dive in dives if not dive.linked
-            ]
-            tables_select_field = c.forms.FormFieldSelect(
-                options=options,
-                title="Select Dive",
-                name="dive_url",
-                multiple=False,
+    notion_client = NotionClient(request.session["access_token"])
+    async with notion_client:
+        dives_raw = await notion_client.query_database(
+            request.session["database"],
+            sorts=[{"timestamp": "last_edited_time", "direction": "descending"}],
+        )
+        dives = [
+            Dive(
+                link=dive["public_url"],
+                name=title[0]["plain_text"] if (title := dive["properties"]["Name"]["title"]) else "Untitled",
+                number=str(get_number(request, dive)),
             )
-            return page(
-                c.Paragraph(text="Select the dive to bind."),
-                c.Form(form_fields=[tables_select_field], submit_url=f"/api/dive/{code}"),
+            for dive in dives_raw.json()["results"]
+        ]
+        async with async_session() as session:
+            expr = (
+                select(Bind.link)
+                .filter_by(user_id=request.session["owner"]["user"]["id"])
+                .filter(Bind.link.in_(dive.link for dive in dives))
             )
+            result = await session.execute(expr)
+            existing = {link for (link,) in result}
+        for dive in dives:
+            dive.linked = dive.link in existing
+
+        options = [
+            SelectOption(value=dive.link, label=f"{dive.number} - {dive.name}") for dive in dives if not dive.linked
+        ]
+        tables_select_field = c.forms.FormFieldSelect(
+            options=options,
+            title="Select Dive",
+            name="dive_url",
+            multiple=False,
+        )
+        return page(
+            c.Paragraph(text="Select the dive to bind."),
+            c.Form(form_fields=[tables_select_field], submit_url=f"/api/dive/{code}"),
+        )
 
 
 @app.post("/api/dive/{code}", response_model=FastUI, response_model_exclude_none=True)
@@ -287,6 +297,9 @@ async def form_content(request: Request, kind: ConfigKind) -> list[AnyComponent]
                     c.Form(form_fields=[tables_select_field], submit_url="/api/config/table"),
                 ]
         case "column":
+            if request.session.get("database") is None:
+                return page(c.Markdown(text="Please select a table first."))
+
             notion_client = NotionClient(request.session["access_token"])
             async with notion_client:
                 if (table := request.session.get("database")) is None:
@@ -329,7 +342,14 @@ async def config_post(request: Request, kind: ConfigKind, value: Annotated[str, 
 
 @app.get("/api/delete", response_model=FastUI, response_model_exclude_none=True)
 async def delete_dive(request: Request, link: str):
+    if request.session.get("access_token") is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     async with async_session() as session:
+        bind = await session.execute(select(Bind).filter_by(link=link))
+        if not bind:
+            raise HTTPException(status_code=404, detail="Not Found")
+        if bind.scalar_one().user_id != request.session["owner"]["user"]["id"]:
+            raise HTTPException(status_code=403, detail="Forbidden")
         await session.execute(delete(Bind).filter_by(link=link))
         await session.commit()
     return [c.FireEvent(event=GoToEvent(url="/"))]

@@ -357,10 +357,11 @@ async def delete_dive(request: Request, link: str):
     if request.session.get("access_token") is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
     async with async_session() as session:
-        bind = await session.execute(select(Bind).filter_by(link=get_fixed_url(link)))
-        if not bind:
+        result = await session.execute(select(Bind).filter_by(link=get_fixed_url(link)))
+        bind = result.scalar_one_or_none()
+        if bind is None:
             raise HTTPException(status_code=404, detail="Not Found")
-        if bind.scalar_one().user_id != request.session["owner"]["user"]["id"]:
+        if bind.user_id != request.session["owner"]["user"]["id"]:
             raise HTTPException(status_code=403, detail="Forbidden")
         await session.delete(bind)
         await session.commit()

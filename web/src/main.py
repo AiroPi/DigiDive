@@ -362,7 +362,7 @@ async def delete_dive(request: Request, link: str):
             raise HTTPException(status_code=404, detail="Not Found")
         if bind.scalar_one().user_id != request.session["owner"]["user"]["id"]:
             raise HTTPException(status_code=403, detail="Forbidden")
-        await session.execute(delete(Bind).filter_by(link=link))
+        await session.delete(bind)
         await session.commit()
     return [c.FireEvent(event=GoToEvent(url="/"))]
 

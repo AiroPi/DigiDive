@@ -1,18 +1,16 @@
-version: "3.8"
-
 services:
   digidive:
-    image: airopi/digidive:latest
     build:
       dockerfile: ./Dockerfile
-      target: prod
+      target: debug
     develop:
       watch:
         - action: sync
           path: ./src
           target: /app
         - action: rebuild
-          path: ./requirements.txt
+          path: ./uv.lock
+    restart: "no"
     ports:
       - 80:8000
     volumes:
@@ -20,4 +18,4 @@ services:
     env_file:
       - .env
     tty: true
-    restart: unless-stopped
+    init: true

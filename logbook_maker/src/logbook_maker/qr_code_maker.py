@@ -3,15 +3,19 @@ from __future__ import annotations
 import datetime
 import os
 import random
+from typing import TYPE_CHECKING
 
 import qrcode
 from dotenv import load_dotenv
 
+if TYPE_CHECKING:
+    from qrcode import BaseImage
+
 load_dotenv()
 
-BASE = 62
+BASE_URL = "https://digidive.schauli.com/dive/{code}"
 
-SECRET_KEY = os.environ["SECRET_KEY"]
+BASE = 62
 
 UPPERCASE_OFFSET = 55
 LOWERCASE_OFFSET = 61
@@ -92,7 +96,7 @@ def int_to_base62_char(integer: int) -> str:
     elif 36 <= integer < 62:
         return chr(integer + LOWERCASE_OFFSET)
     else:
-        raise ValueError("%d is not a valid integer in the range of base %d" % (integer, BASE))
+        raise ValueError(f"{integer} is not a valid integer in the range of base {BASE}")
 
 
 def base62_to_int(key: str) -> int:
@@ -170,17 +174,16 @@ def bin_to_text(bin_: int) -> str:
     return result
 
 
-def qr_encode(name: str, incr: int) -> str:
-    version = 1  # 1 byte value
+def generate_code(incr: int) -> str:
+    version = 2  # 1 byte value
     timestamp = int(datetime.datetime.now().timestamp())
 
-    sec = text_to_bin(SECRET_KEY)
     random_nb = random.randint(1, 0xFFFF)  # noqa: S311
 
     value = timestamp  # 4 bytes
     value = (value << 8) + incr  # 1 byte
 
-    value *= sec % random_nb
+    value *= random_nb
     value = (value << 16) + random_nb  # 2 bytes
 
     value = (value << 8) + version  # 1 byte
@@ -190,13 +193,15 @@ def qr_encode(name: str, incr: int) -> str:
     return code
 
 
-def qr_extract_infos(code: str) -> tuple[int, int, int]:
+def extract_infos_from_code(code: str) -> tuple[int, int, int]:
     value = base62_to_int(code)
 
-    secret = text_to_bin(SECRET_KEY)
     value, version = get_bytes(value, 1)  # first byte
 
     if version == 1:
+        secret_key = os.getenv("SECRET_KEY", "This is very secret.")
+        secret = text_to_bin(secret_key)
+
         value, public_key = get_bytes(value, 2)
 
         value = value // (secret % public_key)
@@ -205,28 +210,20 @@ def qr_extract_infos(code: str) -> tuple[int, int, int]:
         timestamp = value
 
         return (version, timestamp, incr)
+    elif version == 2:
+        value, public_key = get_bytes(value, 2)
+
+        value = value // public_key
+        value, incr = get_bytes(value, 1)
+        timestamp = value
+
+        return (version, timestamp, incr)
     else:
-        raise ValueError("Version %d is not supported." % version)
+        raise ValueError(f"Version {version} is not supported.")
 
 
-# def matrix_qr(qr_codes: list[str]) -> list[list[str]]:
-#     """Take a list of QR codes and return a matrix of QR codes.
-
-#     Args:
-#         qr_codes (list[str]): The list of QR codes.
-
-#     Returns:
-#         list[list[str]]: The matrix of QR codes.
-#     """
-
-
-if __name__ == "__main__":
-    for i in range(54):
-        code = qr_encode("Name", i)
-        print(code)
-        print(qr_extract_infos(code))
-
-        qr = qrcode.QRCode(error_correction=qrcode.ERROR_CORRECT_L, border=0)
-        qr.add_data(f"https://digidive.schauli.com/dive/{code}")
-        img = qr.make_image()
-        img.save(f"./data/results/image{i + 1}.png")
+def make_qr_code(code: str) -> BaseImage:
+    qr = qrcode.QRCode(error_correction=qrcode.ERROR_CORRECT_L, border=0)
+    qr.add_data(BASE_URL.format(code=code))
+    img = qr.make_image()
+    return img

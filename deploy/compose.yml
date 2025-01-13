@@ -1,0 +1,11 @@
+services:
+  digidive:
+    image: airopi/digidive:latest
+    ports:
+      - 80:8000
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    tty: true
+    restart: unless-stopped

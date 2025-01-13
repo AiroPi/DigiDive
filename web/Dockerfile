@@ -1,28 +1,28 @@
 # syntax=docker/dockerfile-upstream:master-labs
 
-FROM python:3.12.0-alpine as build
+FROM python:3.12-alpine as build
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 WORKDIR /app
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN --mount=type=cache,target=/var/cache/apk/ \
-    --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=bind,source=requirements.txt,target=requirements.txt \
+RUN --mount=type=cache,target=/var/cache/apk \
+    --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     : \
-    && apk add gcc musl-dev linux-headers git \
-    && pip install -U pip \
-    && pip install -U -r requirements.txt \
+    && apk update && apk add gcc musl-dev linux-headers git \
+    && uv sync --no-dev --locked \
     && :
 
-FROM python:3.12.0-alpine as base
+
+FROM python:3.12-alpine as base
 # https://docs.docker.com/reference/dockerfile/#copy---parents
-COPY --parents --from=build /opt/venv /
+COPY --parents --from=build /app/.venv /
 WORKDIR /app
 COPY ./src ./
 COPY --parents ./alembic.ini ./alembic ./
-ENV PATH="/opt/venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=0
 
-FROM base as prod
+FROM base as production
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 FROM base as debug

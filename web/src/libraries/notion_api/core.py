@@ -44,7 +44,7 @@ class NotionClient:
         }
         self.client = await httpx.AsyncClient(headers=headers).__aenter__()
 
-    async def __aexit__(self, *args: Any, **kwargs: Any):
+    async def __aexit__(self, *args: object, **kwargs: Any):
         if self.client is not None:
             await self.client.aclose()
         self.client = None

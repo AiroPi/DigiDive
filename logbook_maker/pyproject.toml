@@ -42,13 +42,14 @@ typeCheckingMode = "strict"
 envlist = ["py312"]
 
 [tool.tox.env_run_base]
+with_dev = true
 runner = "uv-venv-lock-runner"
 description = "run all checks on the code"
-extras = ["dev"]
 commands = [
     #fmt
     ["ruff", "format", "--check"],
     ["ruff", "check"],
+    ["pyright", "--version"],
     ["pyright"],
 ]
 

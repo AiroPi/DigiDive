@@ -4,8 +4,7 @@ from functools import partial
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase, Mapped, MappedAsDataclass
-from sqlalchemy.orm import mapped_column as _mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, MappedAsDataclass, mapped_column as _mapped_column
 
 mapped_column = partial(_mapped_column, default=None)
 

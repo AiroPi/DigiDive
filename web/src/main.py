@@ -16,7 +16,7 @@ from fastui.components.display import DisplayLookup
 from fastui.events import GoToEvent, PageEvent
 from fastui.forms import SelectOption
 from pydantic import BaseModel, computed_field
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -155,7 +155,7 @@ async def index(request: Request) -> list[AnyComponent]:
 
     dives = [
         Dive(
-            link=dive["public_url"],
+            link=get_fixed_url(dive["public_url"]),
             name=title[0]["plain_text"] if (title := dive["properties"]["Name"]["title"]) else "Untitled",
             number=str(get_number(request, dive)),
         )
@@ -165,12 +165,12 @@ async def index(request: Request) -> list[AnyComponent]:
         expr = (
             select(Bind.link)
             .filter_by(user_id=request.session["owner"]["user"]["id"])
-            .filter(Bind.link.in_(get_fixed_url(dive.link) for dive in dives))
+            .filter(Bind.link.in_(dive.link for dive in dives))
         )
         result = await session.execute(expr)
         existing = {link for (link,) in result}
     for dive in dives:
-        dive.linked = get_fixed_url(dive.link) in existing
+        dive.linked = dive.link in existing
 
     return page(
         c.Table(

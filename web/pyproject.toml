@@ -41,9 +41,9 @@ description = "run all checks on the code"
 extras = ["dev"]
 commands = [
     #fmt
-    ["ruff", "format", "--check", "src"],
-    ["ruff", "check", "src"],
-    ["pyright", "src"],
+    ["ruff", "format", "--check"],
+    ["ruff", "check"],
+    ["pyright"],
 ]
 
 

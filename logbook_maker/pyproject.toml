@@ -1,0 +1,115 @@
+[project]
+name = "logbook_maker"
+version = "1.0.1"
+requires-python = ">=3.12"
+dependencies = [
+    # https://packaging.python.org/en/latest/specifications/dependency-specifiers/
+    "qrcode[pil]",
+    "python-dotenv",
+    "Pillow",
+    "cairosvg",
+    "typer",
+    "pypdf",
+]
+
+[project.scripts]
+logbook-maker = "logbook_maker.__main__:app"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src", "templates"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/logbook_maker" = "logbook_maker"
+"templates" = "logbook_maker/templates"
+
+
+[dependency-groups]
+dev = [{ include-group = "lint" }, { include-group = "tox" }, "types-Pillow"]
+lint = ["pyright", "ruff"]
+tox = ["tox", "tox-uv"]
+
+
+[tool.pyright]
+typeCheckingMode = "strict"
+
+
+[tool.tox]
+envlist = ["py312"]
+
+[tool.tox.env_run_base]
+runner = "uv-venv-lock-runner"
+description = "run all checks on the code"
+extras = ["dev"]
+commands = [
+    #fmt
+    ["ruff", "format", "--check"],
+    ["ruff", "check"],
+    ["pyright"],
+]
+
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+src = ["src"]
+exclude = ["bin", "alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle Error
+    "F",     # pyflakes
+    "UP",    # pyupgrade
+    "SIM",   # flake8-simplify
+    "I",     # imports
+    "S",     # bandit (security)
+    "N",     # pep8-naming
+    "ASYNC", # flake8-async
+    "C4",    # flake8-compehensions
+    "FA",    # flake8-future-annotations
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "G",     # flake8-logging-format
+    "PIE",   # flake8-pie
+    "PYI",   # flake8-pyi
+    "RSE",   # flake8-raise
+    "SLOT",  # flake8-slots
+    "INT",   # flake8-gettext
+    "TRY",   # tryceratops
+    "FLY",   # flynt
+    "PERF",  # Perflint
+    "FURB",  # refurb
+    "LOG",   # flake8-logging
+    "RUF",   # Ruff-specific-rules
+    # "ERA",   # locate commented codes
+    # "FIX",   # locate TODOs and FIXME
+    # "PTH",   # flake8-use-pathlib (maybe todo ?)
+    # "TID",   # flake8-tidy-imports (maybe todo ?)
+    # "SLF",   # flake8-self  (managed by pyright)
+    # "RET",   # flake8-return
+    # "Q",     # flake8-quotes
+    # "T20",   # flake8-print
+    # "DTZ",   # flake8-datetimez (TODO)
+    # "B",     # flake8-bugbear
+]
+ignore = [
+    "E501", # line too long (we relate on the formater)
+    "N818", # Error suffix for exceptions names
+    # "PIE796", # Enum contains duplicate value
+    "TRY003", # Avoid specifying long messages outsides the exception class
+    "ISC001", # To avoid conflicts with the formatter
+]
+dummy-variable-rgx = '^\*{0,2}(_$|__$|unused_|dummy_)'
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.isort]
+combine-as-imports = true

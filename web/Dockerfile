@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile-upstream:master-labs
 
-FROM python:3.12-alpine as build
+FROM python:3.12-alpine AS build
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 WORKDIR /app
 RUN --mount=type=cache,target=/var/cache/apk \
@@ -13,7 +13,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
     && :
 
 
-FROM python:3.12-alpine as base
+FROM python:3.12-alpine AS base
 # https://docs.docker.com/reference/dockerfile/#copy---parents
 COPY --parents --from=build /app/.venv /
 WORKDIR /app
@@ -22,8 +22,8 @@ COPY --parents ./alembic.ini ./alembic ./
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=0
 
-FROM base as production
+FROM base AS production
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-FROM base as debug
+FROM base AS debug
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

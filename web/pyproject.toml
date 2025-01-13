@@ -1,6 +1,6 @@
 [project]
 name = "digidive"
-version = "1.0.0"  # https://packaging.python.org/en/latest/specifications/version-specifiers/
+version = "1.0.1"  # https://packaging.python.org/en/latest/specifications/version-specifiers/
 requires-python = ">=3.12"
 dependencies = [
     # https://packaging.python.org/en/latest/specifications/dependency-specifiers/

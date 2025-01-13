@@ -1,5 +1,5 @@
 [project]
-name = "HelloWorld"
+name = "digidive"
 version = "1.0.0"  # https://packaging.python.org/en/latest/specifications/version-specifiers/
 requires-python = ">=3.12"
 dependencies = [
